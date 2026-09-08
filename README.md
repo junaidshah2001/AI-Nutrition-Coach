@@ -1,157 +1,575 @@
 # AI Nutrition Coach
 
-A multimodal AI nutrition analysis system that analyzes food images and produces structured nutritional estimates using a vision-language model.
+### Multimodal Food Understanding, Nutrition Estimation & Reliability Auditing
 
-## Overview
+An experimental multimodal AI system that analyzes food images using a vision-language model and produces structured estimates of food identity, portion size, macronutrients, fiber, calories, confidence, and uncertainty.
 
-This project demonstrates an end-to-end multimodal AI pipeline for food image understanding and nutrition estimation.
+The project goes beyond basic image classification by introducing a **reliability layer** that detects suspicious nutritional outputs, calibrates model confidence, and identifies predictions requiring human review.
 
-The system:
+---
 
-1. Accepts a food image
-2. Uses a vision-language model to identify visible food
-3. Estimates the visible portion
-4. Estimates protein, carbohydrates, fat, and fiber
-5. Calculates calories deterministically from macronutrients
-6. Performs structural and consistency validation
-7. Detects suspicious outputs
-8. Calibrates model confidence
-9. Flags uncertain cases for human review
+## Key Results
 
-## Model
+The system was evaluated on a **12-image food benchmark** using a reference-free structural and reliability evaluation framework.
 
-**Hugging Face SmolVLM2-2.2B-Instruct**
+| Metric                                  |      Result |
+| --------------------------------------- | ----------: |
+| Benchmark images                        |      **12** |
+| JSON validity                           |    **100%** |
+| Structured output completeness          |    **100%** |
+| Numeric validity                        |    **100%** |
+| Macro-calorie consistency               |    **100%** |
+| Mean inference latency                  | **5.479 s** |
+| Median inference latency                | **5.056 s** |
+| P95 inference latency                   | **7.794 s** |
+| Original high-confidence risky outputs  |     **25%** |
+| Remaining high-confidence risky outputs |      **0%** |
+| Predictions requiring human review      |  **33.33%** |
+| Reference-free PASS                     |  **66.67%** |
+| Reference-free WARN                     |  **16.67%** |
+| Reference-free FAIL                     |  **16.67%** |
 
-Model: `HuggingFaceTB/SmolVLM2-2.2B-Instruct`
+### Main Reliability Improvement
 
-The model is downloaded automatically at runtime.
+A major objective of the project was to reduce **overconfidence in visually uncertain nutritional predictions**.
 
-## Architecture
+The reliability layer reduced:
+
+**High-confidence risky predictions: 25% → 0%**
+
+Rather than blindly trusting the model's confidence score, the system applies deterministic risk checks and can downgrade confidence or require human review.
+
+---
+
+# 1. Problem
+
+Estimating nutrition from a food image is substantially more difficult than identifying the food itself.
+
+A photograph does not reliably reveal:
+
+* Exact ingredient quantities
+* Cooking method
+* Hidden ingredients
+* Oil or butter usage
+* Recipe composition
+* Exact portion weight
+* Brand-specific nutritional information
+* Serving size
+* Food density
+
+Therefore, a multimodal nutrition system must distinguish between:
+
+> **What the model can visually infer**
+
+and
+
+> **What cannot be reliably determined from an image alone.**
+
+This project investigates that problem while emphasizing structured outputs and reliability rather than presenting model-generated nutrition estimates as ground truth.
+
+---
+
+# 2. Solution
+
+The system implements an end-to-end multimodal pipeline:
 
 ```text
 Food Image
-    |
-    v
+     │
+     ▼
 Vision-Language Model
-    |
-    +-- Food identification
-    +-- Portion estimation
-    +-- Protein
-    +-- Carbohydrates
-    +-- Fat
-    +-- Fiber
-    |
-    v
+     │
+     ├── Food Identification
+     ├── Portion Estimation
+     ├── Protein Estimation
+     ├── Carbohydrate Estimation
+     ├── Fat Estimation
+     └── Fiber Estimation
+     │
+     ▼
 Structured JSON
-    |
-    v
+     │
+     ▼
 Deterministic Calorie Calculation
-    |
-    v
-Reference-Free Reliability Audit
-    |
-    +-- Zero-macro detection
-    +-- Generic-label detection
-    +-- Very-low-calorie detection
-    +-- Macro consistency
-    +-- Confidence calibration
-    +-- Human-review flag
-    |
-    v
-Final Nutrition Estimate
+     │
+     ▼
+Reliability & Sanity Checks
+     │
+     ├── Zero-macro detection
+     ├── Generic-label detection
+     ├── Very-low-calorie detection
+     ├── Macro-mass checks
+     ├── Confidence calibration
+     └── Human-review flag
+     │
+     ▼
+Final Structured Result
 ```
 
-## Calorie Calculation
+---
 
-Calories are calculated deterministically using the standard macronutrient energy factors:
+# 3. Multimodal Model
+
+The project uses:
+
+**HuggingFaceTB/SmolVLM2-2.2B-Instruct**
+
+The model receives a food image together with a structured prompt and returns machine-readable nutritional information.
+
+The model is loaded locally in the Google Colab runtime rather than relying on a commercial inference API.
+
+### Hardware
+
+Development and testing were performed using:
+
+* NVIDIA Tesla T4
+* CUDA acceleration
+* PyTorch
+* Hugging Face Transformers
+* Google Colab
+
+---
+
+# 4. Structured Output
+
+The model is constrained to produce a JSON object containing:
+
+```json
+{
+  "food": "...",
+  "portion": "...",
+  "protein_g": 0.0,
+  "carbs_g": 0.0,
+  "fat_g": 0.0,
+  "fiber_g": 0.0,
+  "confidence": "low|medium|high",
+  "uncertainty": "..."
+}
+```
+
+This provides a consistent interface between multimodal inference and deterministic downstream processing.
+
+---
+
+# 5. Deterministic Calorie Calculation
+
+Calories are **not independently generated by the model**.
+
+They are calculated from the predicted macronutrients using:
 
 ```text
-Calories = 4 × Protein(g)
-         + 4 × Carbohydrates(g)
-         + 9 × Fat(g)
+Calories =
+    4 × Protein(g)
+  + 4 × Carbohydrates(g)
+  + 9 × Fat(g)
 ```
 
-This prevents mathematical inconsistency between reported macronutrients and calories.
+This design provides an important engineering guarantee:
 
-## Validation
+> The reported calorie value is mathematically consistent with the reported macronutrients.
 
-The project includes reference-free validation for:
+The validation pipeline achieved:
 
-- JSON validity
-- Structured output completeness
-- Numeric validity
-- Macro-calorie consistency
-- Zero-major-macro detection
-- Generic food-label detection
-- Suspiciously low calorie detection
-- Confidence calibration
-- Human-review requirements
+**Macro-calorie consistency: 100%**
 
-## Important Limitation
+This metric measures internal mathematical consistency. It does **not** establish that the underlying nutritional estimates are correct.
 
-**Reference-free validation is not nutritional accuracy.**
+---
 
-Actual nutritional accuracy requires a ground-truth dataset containing verified food portions and nutrient values.
+# 6. Reliability Engineering
 
-Therefore, this project does not claim that the model's estimated calories or macronutrients are medically or nutritionally exact.
+A central component of this project is the post-inference reliability layer.
 
-## Hardware
+Instead of accepting every model prediction at face value, the system evaluates the output for suspicious patterns.
 
-The system was developed and tested in Google Colab using:
+## Reliability checks
 
-- NVIDIA Tesla T4 GPU
-- CUDA acceleration
-- PyTorch
-- Hugging Face Transformers
+### 6.1 Zero-major-macro detection
 
-## Repository Structure
+Flags predictions where protein, carbohydrates, and fat are simultaneously zero despite visible food.
+
+### 6.2 Generic food-label detection
+
+Identifies vague outputs such as generic descriptions instead of useful food identities.
+
+### 6.3 Very-low-calorie detection
+
+Flags nutritionally suspicious outputs where the estimated calorie value is unusually low for the predicted food and portion.
+
+### 6.4 Macro-mass sanity checking
+
+Checks whether the predicted macronutrients are sufficiently substantial for the claimed food.
+
+### 6.5 Confidence calibration
+
+The model's original confidence is not blindly trusted.
+
+Risky predictions can be downgraded:
+
+```text
+High confidence
+      │
+      ▼
+Reliability checks
+      │
+      ├── Low risk ──────► High confidence
+      │
+      └── High risk ─────► Medium / Low confidence
+```
+
+### 6.6 Human-review flag
+
+Predictions with significant uncertainty can be marked:
+
+```text
+review_required = true
+```
+
+This converts the system from a simple prediction pipeline into a basic **human-in-the-loop AI system**.
+
+---
+
+# 7. Validation Methodology
+
+The evaluation framework focuses on properties that can be assessed without assuming that the model's nutritional estimates are ground truth.
+
+### Structural validation
+
+Checks whether the model successfully produces:
+
+* Valid JSON
+* Food identification
+* Portion information
+* Protein
+* Carbohydrates
+* Fat
+* Fiber
+* Confidence
+* Uncertainty
+
+### Numerical validation
+
+Checks:
+
+* Non-negative numerical values
+* Valid numeric parsing
+* Deterministic calorie calculation
+* Macro-calorie consistency
+
+### Reliability validation
+
+Checks:
+
+* Zero-macro predictions
+* Generic labels
+* Suspiciously low calories
+* Low macro mass
+* Overconfident risky predictions
+* Human-review requirements
+
+---
+
+# 8. Quantitative Evaluation
+
+The benchmark produced the following structural results:
+
+### Output Reliability
+
+**JSON validity: 100%**
+
+Every evaluated image produced a parseable structured response.
+
+**Structured output completeness: 100%**
+
+Required nutritional fields were successfully generated.
+
+**Numeric validity: 100%**
+
+The numerical nutritional fields passed the implemented numerical validation checks.
+
+**Macro-calorie consistency: 100%**
+
+Calories were deterministically derived from the reported macronutrients.
+
+---
+
+## Inference Performance
+
+| Metric |     Latency |
+| ------ | ----------: |
+| Mean   | **5.479 s** |
+| Median | **5.056 s** |
+| P95    | **7.794 s** |
+
+These measurements represent model inference performance in the development environment and should not be interpreted as production serving benchmarks.
+
+---
+
+# 9. Reliability Results
+
+The initial system exposed a significant problem:
+
+**25% of evaluated predictions were classified as risky while still carrying high confidence.**
+
+A deterministic reliability layer was subsequently introduced.
+
+After calibration:
+
+**Remaining high-confidence risky predictions: 0%**
+
+The system also identified:
+
+**33.33% of predictions for additional review**
+
+This is intentional.
+
+For a nutrition estimation system, uncertainty should be surfaced rather than hidden.
+
+---
+
+# 10. Failure Modes
+
+The evaluation revealed several important failure modes.
+
+### Portion ambiguity
+
+A photograph rarely provides enough information to determine exact food weight.
+
+### Hidden ingredients
+
+Oil, sauces, butter, fillings, dressings, and preparation methods may not be visible.
+
+### Generic recognition
+
+Visually ambiguous foods can result in generic labels rather than precise identification.
+
+### Unrealistic macro estimates
+
+A model can produce mathematically consistent numbers that are still nutritionally implausible.
+
+### Confidence overestimation
+
+The model may express high confidence even when visual evidence is insufficient.
+
+The reliability layer specifically addresses this last problem.
+
+---
+
+# 11. Why Reference-Free Validation?
+
+A major methodological distinction in this project is:
+
+**Internal consistency ≠ nutritional accuracy.**
+
+For example, if a model predicts:
+
+```text
+Protein = 10 g
+Carbohydrates = 20 g
+Fat = 5 g
+```
+
+the deterministic calorie calculation will be:
+
+```text
+4(10) + 4(20) + 9(5) = 165 kcal
+```
+
+The result is internally consistent.
+
+However, this does not prove that the actual food contains 10 g protein, 20 g carbohydrates, and 5 g fat.
+
+Actual nutritional accuracy requires a ground-truth dataset containing:
+
+* Measured food portions
+* Verified nutrient composition
+* Standardized serving sizes
+* Ideally multiple food preparation conditions
+
+Therefore, this project deliberately avoids claiming nutritional accuracy from reference-free validation alone.
+
+---
+
+# 12. Limitations
+
+The current system is a research/portfolio prototype rather than a clinically validated nutrition system.
+
+Key limitations include:
+
+1. Nutritional estimates are image-based approximations.
+2. Exact portion weight cannot reliably be inferred from arbitrary images.
+3. Hidden ingredients cannot always be detected.
+4. Restaurant and recipe-specific nutrition may differ substantially.
+5. Visual similarity can cause food identification errors.
+6. The model may produce plausible but incorrect nutritional values.
+7. Reference-free evaluation cannot measure true nutritional accuracy.
+8. A ground-truth nutrition dataset is required for formal accuracy evaluation.
+
+The system should therefore **not be used as medical, clinical, or dietary advice**.
+
+---
+
+# 13. Reproducibility
+
+The project is designed to run in Google Colab.
+
+The repository contains:
 
 ```text
 AI-Nutrition-Coach/
-|
-+-- AI_Nutrition_Coach.ipynb
-+-- README.md
-+-- requirements.txt
-+-- results/
-    +-- validation_results.csv
+│
+├── AI_Nutrition_Coach.ipynb
+├── README.md
+├── requirements.txt
+│
+└── results/
+    └── validation_results.csv
 ```
 
-## Running the Project
+Model weights are not stored in the repository.
 
-Open the notebook in Google Colab and run the cells from top to bottom.
+The model is downloaded automatically at runtime from Hugging Face.
 
-The model will automatically download from Hugging Face.
+---
 
-## Technologies
+# 14. Technology Stack
 
-- Python
-- PyTorch
-- Hugging Face Transformers
-- SmolVLM2
-- Computer Vision
-- Vision-Language Models
-- Multimodal AI
-- Prompt Engineering
-- Structured JSON Generation
-- Model Validation
-- Confidence Calibration
-- Google Colab
+### Programming
 
-## Project Purpose
+* Python
 
-This project demonstrates practical skills in:
+### Deep Learning
 
-- Multimodal AI
-- Vision-Language Models
-- Prompt engineering
-- Structured model outputs
-- Deterministic post-processing
-- AI reliability engineering
-- Model evaluation
-- GPU inference
+* PyTorch
+* Transformers
+* CUDA
 
-## Disclaimer
+### Multimodal AI
 
-This is an experimental AI research and portfolio project.
+* Vision-Language Models
+* SmolVLM2
+* Multimodal Prompt Engineering
 
-The generated nutrition estimates should not be treated as medical, dietary, or clinical advice.
+### Data Processing
+
+* NumPy
+* Pandas
+* Pillow
+
+### Evaluation
+
+* Structured-output validation
+* Deterministic numerical validation
+* Reliability auditing
+* Confidence calibration
+* Human-in-the-loop review
+
+### Environment
+
+* Google Colab
+* NVIDIA Tesla T4
+
+---
+
+# 15. Engineering Contributions
+
+The project demonstrates practical implementation of:
+
+* Multimodal image understanding
+* Vision-language model inference
+* Structured JSON generation
+* Prompt-constrained output
+* Deterministic post-processing
+* Nutrition estimation
+* Automated validation
+* Reliability engineering
+* Confidence calibration
+* Human-review workflows
+* GPU inference
+* Reproducible experimentation
+
+The project therefore focuses not only on **getting an answer from a multimodal model**, but also on determining **when that answer should and should not be trusted**.
+
+---
+
+# 16. Future Improvements
+
+Potential next stages include:
+
+### Ground-truth evaluation
+
+Create a benchmark with verified food weights and nutritional values to measure:
+
+* MAE
+* RMSE
+* MAPE
+* Food recognition accuracy
+* Portion estimation error
+* Macro estimation error
+* Calorie estimation error
+
+### Better portion estimation
+
+Use reference objects, depth estimation, segmentation, or calibrated image capture to improve serving-size estimation.
+
+### Nutrition databases
+
+Integrate verified nutrition databases to ground model predictions instead of relying entirely on visual estimation.
+
+### Retrieval-Augmented Generation
+
+Retrieve nutrition information from structured food databases based on identified food and estimated portion.
+
+### Multimodal RAG
+
+Combine:
+
+```text
+Image
+  +
+Vision-Language Model
+  +
+Food Database
+  +
+Retriever
+  +
+Nutrition Calculator
+```
+
+to reduce hallucinated nutritional values.
+
+### Production deployment
+
+Potential deployment architecture:
+
+```text
+Frontend
+   │
+   ▼
+API
+   │
+   ▼
+Multimodal Inference
+   │
+   ▼
+Nutrition Retrieval
+   │
+   ▼
+Reliability Layer
+   │
+   ▼
+Validated Response
+```
+
+---
+
+# 17. Final Takeaway
+
+This project demonstrates a practical principle in multimodal AI:
+
+> **A successful AI system should not only generate predictions; it should also quantify uncertainty and identify predictions that require additional verification.**
+
+The current system achieves strong structural reliability and deterministic consistency while explicitly acknowledging the limitations of image-based nutritional estimation.
+
+The next major research step is **ground-truth-based nutritional evaluation**, which would allow genuine claims about calorie and macronutrient accuracy.
+
