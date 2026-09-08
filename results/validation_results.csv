@@ -1,0 +1,13 @@
+image,food,portion,protein_g,carbs_g,fat_g,fiber_g,calculated_calories,confidence,calibrated_confidence,risk_score,review_required,diagnostic_reason,quality_status,latency_sec
+Delicious-Cheeseburger-Close-Up-1536x1024 (1).webp,hamburger,1/4 of a burger,20.0,10.0,10.0,2.0,210.0,high,high,0,False,none,PASS,6.921210765838623
+Delicious-Cheeseburger-Close-Up-1536x1024 (2).webp,hamburger,1/4 of a burger,20.0,10.0,10.0,2.0,210.0,high,high,0,False,none,PASS,6.955049991607666
+Delicious-Cheeseburger-Close-Up-1536x1024 (3).webp,hamburger,1/4 of a burger,20.0,10.0,10.0,2.0,210.0,high,high,0,False,none,PASS,6.848485946655273
+Delicious-Cheeseburger-Close-Up-1536x1024.webp,hamburger,1/4 of a burger,20.0,10.0,10.0,2.0,210.0,high,high,0,False,none,PASS,7.967792272567749
+Single-Food-Salad-1-1152x1536 (1).jpg,salad,1 cup,30.0,20.0,5.0,5.0,245.0,high,high,0,False,none,PASS,6.281365633010864
+Single-Food-Salad-1-1152x1536 (2).jpg,salad,1 cup,30.0,20.0,5.0,5.0,245.0,high,high,0,False,none,PASS,5.730694055557251
+Single-Food-Salad-1-1152x1536 (3).jpg,salad,1 cup,30.0,20.0,5.0,5.0,245.0,high,high,0,False,none,PASS,6.8521177768707275
+Single-Food-Salad-1-1152x1536 (4).jpg,salad,1 cup,30.0,20.0,5.0,5.0,245.0,high,high,0,False,none,PASS,5.154715299606323
+Single-Food-Salad-1-1152x1536.jpg,salad,1 cup,30.0,20.0,5.0,5.0,245.0,high,high,0,False,none,PASS,6.945915222167969
+amirali-mirhashemian-sc5sTPMrVfk-unsplash (1).jpg,hamburger,1/4 of a burger,20.0,10.0,10.0,0.0,210.0,high,high,0,False,none,PASS,7.872864723205566
+amirali-mirhashemian-sc5sTPMrVfk-unsplash (2).jpg,hamburger,1/4 of a burger,20.0,10.0,10.0,0.0,210.0,high,high,0,False,none,PASS,7.835830926895142
+amirali-mirhashemian-sc5sTPMrVfk-unsplash (3).jpg,hamburger,1/4 of a burger,20.0,10.0,10.0,0.0,210.0,high,high,0,False,none,PASS,8.457871675491333
