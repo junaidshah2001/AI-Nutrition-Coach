@@ -1,0 +1,8 @@
+transformers
+accelerate
+torch
+torchvision
+pillow
+pandas
+numpy
+gradio
